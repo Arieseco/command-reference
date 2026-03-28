@@ -1,0 +1,182 @@
+---
+type Props = {
+  title: string;
+  mainBg?: string;
+};
+
+const { title, mainBg } = Astro.props;
+
+import SidebarNav from "../components/SidebarNav.astro";
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,200..700,0,0&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module">
+      import '@material/web/all.js';
+    </script>
+    <style>
+      :global(:root) {
+        --content-max: 1000px;
+        /* Material Design 3-ish (Light) tokens */
+        --md-primary: #6750a4;
+        --md-on-primary: #ffffff;
+        --md-primary-container: #eaddff;
+        --md-on-primary-container: #21005d;
+        --md-secondary: #625b71;
+        --md-on-secondary: #ffffff;
+        --md-surface: #fffbfe;
+        --md-surface-container-low: #f7f2fa;
+        --md-surface-container: #f3edf7;
+        --md-on-surface: #1c1b1f;
+        --md-on-surface-variant: #49454f;
+        --md-outline: #79747e;
+        --sidebar-bg: #f2ecee;
+
+        --text-color: var(--md-on-surface);
+        --muted-color: var(--md-on-surface-variant);
+        --border-color: color-mix(in srgb, var(--md-outline) 55%, transparent);
+        --surface: var(--md-surface-container-low);
+        --surface-2: var(--md-surface-container);
+        --code-bg: #0b1020;
+        --code-fg: #e6edf3;
+      }
+
+      :global(body) {
+        margin: 0;
+        font-family: Roboto, "Noto Sans JP", system-ui, -apple-system, Segoe UI, Helvetica,
+          Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text-color);
+        background: var(--surface);
+      }
+
+      .layout {
+        height: 100dvh;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 124px minmax(0, 1fr);
+        grid-template-rows: 1fr;
+        grid-template-areas:
+          "aside main"
+          ;
+      }
+
+      main {
+        grid-area: main;
+        padding: 20px 16px 40px;
+        overflow: auto;
+        background: #ffffff;
+      }
+
+      main :global(> *) {
+        max-width: var(--content-max);
+      }
+
+      main :global(h1) {
+        font-size: 2rem;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+        margin: 0 0 12px;
+      }
+
+      main :global(h2) {
+        font-size: 1.25rem;
+        line-height: 1.25;
+        margin: 28px 0 12px;
+      }
+
+      main :global(p) {
+        margin: 12px 0;
+        line-height: 1.65;
+      }
+
+      main :global(a) {
+        color: inherit;
+        text-underline-offset: 3px;
+      }
+
+      main :global(a:hover) {
+        text-decoration-thickness: 2px;
+      }
+
+      main :global(ul),
+      main :global(ol) {
+        padding-left: 1.25rem;
+        margin: 12px 0;
+      }
+
+      main :global(code) {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+        font-size: 0.95em;
+      }
+
+      main :global(pre) {
+        max-width: var(--content-max);
+        overflow: auto;
+        padding: 14px 16px;
+        border-radius: 12px;
+        background: var(--code-bg);
+        color: var(--code-fg);
+      }
+
+      main :global(pre code) {
+        background: transparent;
+        color: inherit;
+      }
+
+      aside {
+        grid-area: aside;
+        padding: 16px 12px 24px;
+        background: var(--sidebar-bg);
+        overflow: visible;
+        position: relative;
+        z-index: 2;
+      }
+
+      @media (max-width: 900px) {
+        .layout {
+          height: auto;
+          overflow: visible;
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-areas:
+            "aside"
+            "main";
+        }
+
+        aside {
+          overflow: visible;
+        }
+
+        main {
+          padding-left: 16px;
+          overflow: visible;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <main style={mainBg ? `background: ${mainBg};` : undefined}>
+        <slot />
+      </main>
+      <aside>
+        <SidebarNav />
+      </aside>
+    </div>
+  </body>
+</html>
+

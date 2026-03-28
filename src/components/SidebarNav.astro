@@ -1,0 +1,950 @@
+---
+import { getCollection } from "astro:content";
+import { withBase } from "../utils/paths";
+
+type MenuItem = {
+  label: string;
+  href: string;
+  icon: string;
+  children?: Array<{ label: string; href: string }>;
+};
+
+function toRouteSlug(id: string): string {
+  return id.replace(/\.(md|mdx)$/i, "");
+}
+
+const commandsPublished = (await getCollection("commands")).filter((entry) => !entry.id.startsWith("_"));
+
+const commandsLetterA = commandsPublished
+  .filter((entry) => {
+    const first = entry.data.title?.trim()?.[0]?.toUpperCase() ?? "";
+    return first === "A";
+  })
+  .sort((a, b) => a.data.title.localeCompare(b.data.title, "ja"));
+
+const commandsLetterB = commandsPublished
+  .filter((entry) => {
+    const first = entry.data.title?.trim()?.[0]?.toUpperCase() ?? "";
+    return first === "B";
+  })
+  .sort((a, b) => a.data.title.localeCompare(b.data.title, "ja"));
+
+const menu: MenuItem[] = [
+  {
+    label: "検索",
+    href: "/search/",
+    icon: "search",
+  },
+  { label: "HOME", href: "/", icon: "home" },
+  {
+    label: "コマンド",
+    href: "/commands/",
+    icon: "terminal",
+    children: [{ label: "コマンド一覧", href: "/commands/" }],
+  },
+  { label: "逆引き", href: "/reverse/", icon: "category" },
+  { label: "バッチ", href: "/batch/", icon: "description" },
+  { label: "topics", href: "/topics/", icon: "book" },
+];
+
+const base = import.meta.env.BASE_URL ?? "/";
+const rawPath = Astro.url.pathname;
+
+function normalizePath(path: string): string {
+  let normalized = path.trim();
+  if (!normalized.startsWith("/")) normalized = `/${normalized}`;
+  normalized = normalized.replace(/\/{2,}/g, "/");
+  if (normalized !== "/" && !normalized.endsWith("/")) normalized = `${normalized}/`;
+  return normalized;
+}
+
+const basePath = normalizePath(base);
+const pathWithoutBase =
+  basePath !== "/" && rawPath.startsWith(basePath) ? rawPath.slice(basePath.length) : rawPath;
+const currentPath = normalizePath(pathWithoutBase || "/");
+
+function isActive(href: string): boolean {
+  const normalizedHref = normalizePath(href);
+  if (normalizedHref === "/") return currentPath === "/";
+  return currentPath === normalizedHref || currentPath.startsWith(`${normalizedHref}`);
+}
+
+/** 追加サイドバーの子リンク用（一覧ページのみ強調したいため完全一致） */
+function isActiveExact(href: string): boolean {
+  return currentPath === normalizePath(href);
+}
+
+/** 「A」配下に載せているコマンド記事を表示中は、A を展開した状態にする */
+const keepLetterADetailsOpen = commandsLetterA.some(
+  (entry) => currentPath === normalizePath(`/commands/${toRouteSlug(entry.id)}/`),
+);
+
+/** 「B」配下に載せているコマンド記事を表示中は、B を展開した状態にする */
+const keepLetterBDetailsOpen = commandsLetterB.some(
+  (entry) => currentPath === normalizePath(`/commands/${toRouteSlug(entry.id)}/`),
+);
+
+---
+
+<nav class="nav" aria-label="サイドバーメニュー">
+  <ul class="list">
+    {
+      menu.map((item) => (
+        <li class:list={["item", item.href === "/commands/" && "command"]}>
+          <a
+            class:list={[
+              "link",
+              item.href === "/search/" && "search",
+              item.href === "/" && "home",
+              isActive(item.href) && "active",
+            ]}
+            href={withBase(item.href)}
+            aria-label={item.label}
+          >
+            <span class="icon" aria-hidden="true">
+              {item.icon}
+            </span>
+            {item.href !== "/search/" && <span class="label">{item.label}</span>}
+          </a>
+          {item.children && (
+            <div class="submenu" role="menu" aria-label={`${item.label} サブメニュー`}>
+              {item.children.map((child) => (
+                <a
+                  class:list={[
+                    "submenuLink",
+                    child.href === "/commands/" && "commandList",
+                    isActiveExact(child.href) && "active",
+                  ]}
+                  role="menuitem"
+                  href={withBase(child.href)}
+                >
+                  {child.label}
+                </a>
+              ))}
+              {item.href === "/commands/" && (
+                <details class="letterDetails" open={keepLetterADetailsOpen}>
+                  <summary class="submenuLink letterSummary commandList">
+                    <span class="letterSummaryLabel">A</span>
+                    <span class="letterChevron" aria-hidden="true">
+                      <span class="letterChevronIcon letterChevronMore">expand_more</span>
+                      <span class="letterChevronIcon letterChevronLess">expand_less</span>
+                    </span>
+                  </summary>
+                  <div class="letterCommandListWrap">
+                    <ul class="letterCommandList">
+                      {commandsLetterA.length ? (
+                        commandsLetterA.map((entry) => (
+                          <li>
+                            <a
+                              class:list={[
+                                "submenuLink",
+                                "letterCommandLink",
+                                currentPath === normalizePath(`/commands/${toRouteSlug(entry.id)}/`) && "active",
+                              ]}
+                              href={withBase(`/commands/${toRouteSlug(entry.id)}/`)}
+                            >
+                              {entry.data.title}
+                            </a>
+                          </li>
+                        ))
+                      ) : (
+                        <li class="letterEmpty">該当なし</li>
+                      )}
+                    </ul>
+                  </div>
+                </details>
+                <details class="letterDetails" open={keepLetterBDetailsOpen}>
+                  <summary class="submenuLink letterSummary commandList">
+                    <span class="letterSummaryLabel">B</span>
+                    <span class="letterChevron" aria-hidden="true">
+                      <span class="letterChevronIcon letterChevronMore">expand_more</span>
+                      <span class="letterChevronIcon letterChevronLess">expand_less</span>
+                    </span>
+                  </summary>
+                  <div class="letterCommandListWrap">
+                    <ul class="letterCommandList">
+                      {commandsLetterB.length ? (
+                        commandsLetterB.map((entry) => (
+                          <li>
+                            <a
+                              class:list={[
+                                "submenuLink",
+                                "letterCommandLink",
+                                currentPath === normalizePath(`/commands/${toRouteSlug(entry.id)}/`) && "active",
+                              ]}
+                              href={withBase(`/commands/${toRouteSlug(entry.id)}/`)}
+                            >
+                              {entry.data.title}
+                            </a>
+                          </li>
+                        ))
+                      ) : (
+                        <li class="letterEmpty">該当なし</li>
+                      )}
+                    </ul>
+                  </div>
+                </details>
+              )}
+            </div>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .nav {
+    position: relative;
+  }
+
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+  }
+
+  .item {
+    position: relative;
+  }
+
+  .link {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 10px 6px;
+    border-radius: 16px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .link:hover {
+    background: transparent;
+  }
+
+  .icon {
+    font-family: "Material Symbols Outlined";
+    font-weight: 400;
+    font-style: normal;
+    font-size: 34px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    width: 68px;
+    height: 44px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 999px;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    color: #5b5558;
+    background: #f2ecee;
+    transform: translateZ(0) scale(1);
+    transition:
+      font-variation-settings 180ms ease,
+      transform 180ms ease,
+      color 180ms ease,
+      background-color 180ms ease;
+  }
+
+  .link.active .icon {
+    color: #35324a;
+    background: #dcdaf5;
+  }
+
+  .link:hover .icon {
+    font-variation-settings: "FILL" 0, "wght" 600, "GRAD" 0, "opsz" 24;
+    color: #3f3a3d;
+    background: #e5dfe2;
+    transform: translateZ(0) scale(1.03);
+  }
+
+  .link.active:hover .icon {
+    color: #2f2c40;
+    background: #d0cee8;
+  }
+
+  .link.search {
+    gap: 0;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .link.search .icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: #f1d3f9 !important;
+    color: #5b5558;
+    border: 1px solid #e7c2f1;
+  }
+
+  .link.search:hover .icon {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    background: #f1d3f9 !important;
+    color: #3f3a3d;
+    transform: translateZ(0) scale(1);
+  }
+
+  .link.search.active .icon,
+  .link.search.active:hover .icon {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    background: #f1d3f9 !important;
+    color: #35324a;
+  }
+
+  .link.home:hover .icon {
+    transform: translateZ(0) scale(1);
+  }
+
+  .label {
+    font-weight: 500;
+    font-size: 11px;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    text-align: center;
+    color: #5b5558;
+    margin-top: -2px;
+    transition: font-weight 180ms ease;
+  }
+
+  .link.active .label {
+    color: #35324a;
+    font-weight: 700;
+  }
+
+  .link:hover .label {
+    font-weight: 700;
+    color: #3f3a3d;
+  }
+
+  .link.active:hover .label {
+    color: #2f2c40;
+  }
+
+  .submenu {
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 0;
+    min-width: 220px;
+    min-height: 0;
+    padding: 10px;
+    border-radius: 20px;
+    background: var(--sidebar-bg, #f2ecee) !important;
+    border: none;
+    box-shadow:
+      0 0 0 1px rgba(28, 27, 31, 0.025),
+      2px 0 8px rgba(28, 27, 31, 0.16);
+    z-index: 10;
+    /* ホバー時だけ grid にすると閉じる際 display が変わり transform が補間されないことがある */
+    display: grid;
+    gap: 2px;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateZ(0) scaleX(0);
+    transform-origin: left center;
+    transition:
+      transform 320ms ease,
+      visibility 0s linear 320ms;
+    align-content: start;
+    grid-auto-rows: min-content;
+  }
+
+  /* absolute の基準は nav（.nav { position: relative }）。li を relative にすると left:100% の基準が変わりパネルが大きくずれる */
+  .item.command {
+    position: static;
+  }
+
+  .item.command > .submenu {
+    left: calc(100% + 2px);
+    top: -16px;
+    width: 240px;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    height: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    border-radius: 0 18px 18px 0;
+    padding-top: 14px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  /* コマンドボタンからパネルへ移る途中の隙間でもホバーが維持されるよう左に透明ブリッジ */
+  .item.command > .submenu::before {
+    content: "";
+    position: absolute;
+    right: 100%;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    background: transparent;
+    pointer-events: auto;
+  }
+
+  .item:hover > .submenu,
+  .item > .submenu:hover {
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateZ(0) scaleX(1);
+    transition:
+      transform 320ms ease,
+      visibility 0s linear 0s;
+  }
+
+  /* コマンド: ホバーが一瞬途切れても開き続ける（斜め移動でサブメニューに届くため） */
+  /* is-closing 中は下のキーフレーム引っ込みを必ず優先（open の transform で潰れないようにする） */
+  .item.command.command-submenu-open:not(.is-closing) > .submenu {
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateZ(0) scaleX(1);
+    transition:
+      transform 320ms ease,
+      visibility 0s linear 0s;
+  }
+
+  /* 追加サイドバー内の文字・項目: パネル展開に少し遅れてフェードイン */
+  .item.command > .submenu > * {
+    opacity: 0;
+    transition: opacity 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .item.command:hover > .submenu > *,
+  .item.command > .submenu:hover > *,
+  .item.command.command-submenu-open:not(.is-closing) > .submenu > * {
+    opacity: 1;
+    transition-delay: 100ms;
+  }
+
+  /* 引っ込み中はパネル縮小に合わせて文字をフェードアウト */
+  .item.command.is-closing > .submenu > *,
+  .item.command.command-submenu-nav-leave > .submenu > * {
+    opacity: 0;
+    transition: opacity 220ms cubic-bezier(0.4, 0, 0.6, 1);
+    transition-delay: 0s;
+  }
+
+  @keyframes commandSubmenuNavLeaveWidth {
+    from {
+      width: var(--command-submenu-nav-w, 240px);
+    }
+    to {
+      width: 0;
+    }
+  }
+
+  /* 画面遷移時: CSS アニメで幅を縮める（WAAPI より再現しやすい） */
+  .item.command.command-submenu-nav-leave > .submenu {
+    visibility: visible !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    transform: translateZ(0) scaleX(1) !important;
+    transform-origin: left center !important;
+    transition: none !important;
+    animation: commandSubmenuNavLeaveWidth 320ms ease forwards !important;
+  }
+
+  /* 閉じる: transition の !important 切替は補間されないことがあるため keyframes で再生 */
+  @keyframes commandSubmenuRetract {
+    from {
+      transform: translateZ(0) scaleX(1);
+    }
+    to {
+      transform: translateZ(0) scaleX(0);
+    }
+  }
+
+  .item.command.is-closing > .submenu {
+    display: grid;
+    gap: 2px;
+    visibility: visible !important;
+    pointer-events: none !important;
+    transform-origin: left center;
+    transition: none !important;
+    /* command-submenu-open より後に定義。キーフレームで scaleX(1)→(0) */
+    animation: commandSubmenuRetract 320ms ease forwards !important;
+  }
+
+  .item.command:hover.is-closing > .submenu,
+  .item.command.is-closing > .submenu:hover {
+    animation: commandSubmenuRetract 320ms ease forwards !important;
+  }
+
+  /* ホバー解除: 環境によっては transition が効かないため、JS が付与するクラスで keyframes を再生 */
+  .item.command.command-submenu-retracting:not(.is-closing) > .submenu {
+    display: grid;
+    gap: 2px;
+    visibility: visible !important;
+    pointer-events: none !important;
+    transform-origin: left center;
+    transition: none !important;
+    animation: commandSubmenuRetract 320ms ease forwards !important;
+  }
+
+  .submenuLink {
+    display: block;
+    padding: 5px 7px;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    line-height: 1.25;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  /* 追加サイドバー内は「コマンド一覧」と同じピル型に統一 */
+  .item.command > .submenu .submenuLink {
+    padding: 5px 12px;
+    border-radius: 999px;
+  }
+
+  .submenuLink::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: #dcdaf5;
+    transform: scaleX(0);
+    transform-origin: center center;
+    opacity: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .submenuLink.active {
+    background: transparent;
+  }
+
+  .submenuLink.active::before {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  .submenuLink.active.animate-once::before {
+    animation: submenuActiveSpread 260ms ease-out both;
+  }
+
+  .submenuLink.active:hover {
+    background: transparent;
+  }
+
+  .submenuLink.active:hover::before {
+    background: #d0cee8;
+    animation: none;
+  }
+
+  .submenuLink:hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  @keyframes submenuActiveSpread {
+    from {
+      transform: scaleX(0);
+      opacity: 0;
+    }
+    to {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+  }
+
+  .letterDetails {
+    margin: 0;
+  }
+
+  .letterCommandListWrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 260ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .letterDetails[open] .letterCommandListWrap {
+    grid-template-rows: 1fr;
+  }
+
+  .letterDetails[open].letterDetails--closing .letterCommandListWrap {
+    grid-template-rows: 0fr;
+  }
+
+  .letterCommandListWrap > .letterCommandList {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .letterSummary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .letterSummary::-webkit-details-marker,
+  .letterSummary::marker {
+    display: none;
+    content: "";
+  }
+
+  .letterSummaryLabel {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .letterChevron {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-left: 2px;
+  }
+
+  .letterChevronIcon {
+    grid-area: 1 / 1;
+    font-family: "Material Symbols Outlined";
+    font-weight: 400;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1;
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    color: #5b5558;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .letterChevronLess {
+    display: none;
+  }
+
+  .letterDetails[open] .letterChevronMore {
+    display: none;
+  }
+
+  .letterDetails[open] .letterChevronLess {
+    display: block;
+  }
+
+  .letterCommandList {
+    margin: 6px 0 0;
+    padding: 0 0 0 4px;
+    list-style: none;
+    display: grid;
+    gap: 4px;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+      opacity 200ms ease 40ms,
+      transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .letterDetails[open] .letterCommandList {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .letterDetails[open].letterDetails--closing .letterCommandList {
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+      opacity 200ms ease,
+      transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .letterCommandList .submenuLink.letterCommandLink {
+    font-size: 0.88rem;
+    line-height: 1.3;
+  }
+
+  .letterCommandList .letterCommandLink:not(.active):hover {
+    background: rgba(0, 0, 0, 0.06);
+  }
+
+  .letterCommandList .letterCommandLink.active:hover {
+    background: transparent;
+  }
+
+  .letterEmpty {
+    font-size: 0.85rem;
+    color: #777;
+    padding: 2px 6px;
+  }
+
+</style>
+
+<script is:inline>
+  (() => {
+  const init = () => {
+  const ANIMATE_KEY = "sidebar:animate-command-list-active";
+  const nav = document.querySelector(".nav");
+  const commandItem = nav?.querySelector(".item.command");
+  const commandLink = commandItem?.querySelector(".link");
+  const links = nav?.querySelectorAll(".link");
+  const activeSubmenuLink = nav?.querySelector(".submenuLink.active");
+  const SUBMENU_RETRACT_MS = 320;
+  /** ホバー解除から引っ込み開始までの猶予（斜め移動でギャップを渡る） */
+  const SUBMENU_CLOSE_DELAY_MS = 400;
+
+  let submenuRetractTimer = 0;
+  let submenuCloseDelayTimer = 0;
+
+  if (commandItem) {
+    const commandSubmenu = commandItem.querySelector(".submenu");
+
+    commandItem.addEventListener("mouseenter", () => {
+      window.clearTimeout(submenuCloseDelayTimer);
+      window.clearTimeout(submenuRetractTimer);
+      commandItem.classList.add("command-submenu-open");
+      commandItem.classList.remove("command-submenu-retracting");
+    });
+
+    commandItem.addEventListener("mouseleave", () => {
+      if (commandItem.classList.contains("is-closing") || !commandSubmenu) return;
+
+      window.clearTimeout(submenuCloseDelayTimer);
+      submenuCloseDelayTimer = window.setTimeout(() => {
+        submenuCloseDelayTimer = 0;
+        commandItem.classList.remove("command-submenu-open");
+
+        const rect = commandSubmenu.getBoundingClientRect();
+        const tf = getComputedStyle(commandSubmenu).transform;
+        let scaleX = 0;
+        if (tf && tf !== "none") {
+          try {
+            scaleX = Math.abs(new DOMMatrix(tf).a);
+          } catch {
+            scaleX = 0;
+          }
+        }
+        const looksOpen = rect.width > 24 || scaleX > 0.08;
+        if (!looksOpen) return;
+
+        commandItem.classList.add("command-submenu-retracting");
+        window.clearTimeout(submenuRetractTimer);
+        submenuRetractTimer = window.setTimeout(() => {
+          commandItem.classList.remove("command-submenu-retracting");
+          submenuRetractTimer = 0;
+        }, SUBMENU_RETRACT_MS);
+      }, SUBMENU_CLOSE_DELAY_MS);
+    });
+  }
+
+  if (activeSubmenuLink) {
+    let shouldAnimate = false;
+    try {
+      shouldAnimate = window.sessionStorage.getItem(ANIMATE_KEY) === "1";
+      window.sessionStorage.removeItem(ANIMATE_KEY);
+    } catch {
+      shouldAnimate = false;
+    }
+
+    if (shouldAnimate) {
+      activeSubmenuLink.classList.add("animate-once");
+      activeSubmenuLink.addEventListener(
+        "animationend",
+        () => {
+          activeSubmenuLink.classList.remove("animate-once");
+        },
+        { once: true },
+      );
+    }
+  }
+
+  if (commandLink && commandLink.classList.contains("active")) {
+    commandLink.addEventListener("click", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+    });
+  }
+
+  const activeLinks = nav?.querySelectorAll(".submenuLink.active");
+  activeLinks?.forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+    });
+  });
+
+  const commandEntryLinks = nav?.querySelectorAll(".link:not(.active), .submenuLink.commandList:not(.active)");
+  commandEntryLinks?.forEach((link) => {
+    const href = link.getAttribute("href");
+    if (!href || !href.includes("/commands/")) return;
+    link.addEventListener("click", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      try {
+        window.sessionStorage.setItem(ANIMATE_KEY, "1");
+      } catch {
+        // ignore storage failures; fallback is no animation
+      }
+    });
+  });
+
+  const setupCommandsPageNavLeave = () => {
+    const navEl = document.querySelector(".nav");
+    const ci = navEl?.querySelector(".item.command");
+    const cl = navEl?.querySelector(".item.command .link");
+    const sm = ci?.querySelector(".submenu");
+    if (!navEl || !ci || !cl || !sm) return;
+
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (event.defaultPrevented || event.button !== 0) return;
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        if (!/\/commands(\/|$)/.test(window.location.pathname)) return;
+        if (!navEl.contains(event.target)) return;
+
+        const a = event.target && event.target.closest && event.target.closest("a");
+        if (!a || !a.classList.contains("link")) return;
+        if (a === cl) return;
+
+        const href = a.getAttribute("href");
+        if (!href) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        cl.classList.remove("active");
+        window.clearTimeout(submenuCloseDelayTimer);
+        window.clearTimeout(submenuRetractTimer);
+        ci.classList.remove(
+          "command-submenu-open",
+          "command-submenu-retracting",
+          "is-closing",
+          "command-submenu-nav-leave",
+        );
+
+        let navigated = false;
+        const goOnce = () => {
+          if (navigated) return;
+          navigated = true;
+          window.location.href = href;
+        };
+
+        sm.style.transition = "none";
+        sm.style.overflow = "hidden";
+        sm.style.boxSizing = "border-box";
+        sm.style.transformOrigin = "left center";
+        sm.style.transform = "translateZ(0) scaleX(1)";
+        void sm.offsetWidth;
+
+        let startW = sm.getBoundingClientRect().width;
+        if (startW < 8) startW = 240;
+        sm.style.setProperty("--command-submenu-nav-w", startW + "px");
+
+        ci.classList.add("command-submenu-nav-leave");
+
+        let safety = 0;
+        function cleanup() {
+          sm.removeEventListener("animationend", onAnimEnd);
+          window.clearTimeout(safety);
+          goOnce();
+        }
+        function onAnimEnd(ev) {
+          if (ev.target !== sm) return;
+          const name = String(ev.animationName || "");
+          if (!name.includes("commandSubmenuNavLeaveWidth")) return;
+          cleanup();
+        }
+        sm.addEventListener("animationend", onAnimEnd);
+        safety = window.setTimeout(cleanup, 450);
+      },
+      true,
+    );
+  };
+
+  setupCommandsPageNavLeave();
+
+  document.querySelectorAll(".letterDetails").forEach((letterDetailsEl) => {
+    const letterSummaryEl = letterDetailsEl.querySelector("summary.letterSummary");
+    const letterWrapEl = letterDetailsEl.querySelector(".letterCommandListWrap");
+    if (!letterSummaryEl || !letterWrapEl) return;
+
+    letterSummaryEl.addEventListener("click", (event) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      event.preventDefault();
+
+      if (!letterDetailsEl.open) {
+        letterDetailsEl.classList.remove("letterDetails--closing");
+        letterDetailsEl.open = true;
+        return;
+      }
+
+      if (letterDetailsEl.classList.contains("letterDetails--closing")) {
+        return;
+      }
+
+      letterDetailsEl.classList.add("letterDetails--closing");
+      let finished = false;
+      const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        letterDetailsEl.open = false;
+        letterDetailsEl.classList.remove("letterDetails--closing");
+        letterWrapEl.removeEventListener("transitionend", onTransitionEnd);
+      };
+      const onTransitionEnd = (ev) => {
+        if (ev.target !== letterWrapEl || ev.propertyName !== "grid-template-rows") return;
+        cleanup();
+      };
+      letterWrapEl.addEventListener("transitionend", onTransitionEnd);
+      window.setTimeout(cleanup, 400);
+    });
+  });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
+  })();
+</script>
+

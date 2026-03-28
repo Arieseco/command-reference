@@ -1,0 +1,26 @@
+---
+import { getCollection, render } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+export async function getStaticPaths() {
+  const topics = await getCollection("topics");
+  return topics
+    .filter((entry) => !entry.id.startsWith("_"))
+    .map((entry) => ({
+      params: { slug: entry.id.replace(/\.(md|mdx)$/i, "") },
+      props: { entry },
+    }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+---
+
+<BaseLayout title={entry.data.title}>
+  <Content />
+  <Fragment slot="sidebar">
+    <p>種別: topic</p>
+    <p>タグ: {(entry.data.tags ?? []).join(", ") || "なし"}</p>
+  </Fragment>
+</BaseLayout>
+

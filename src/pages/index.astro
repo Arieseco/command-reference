@@ -1,0 +1,237 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { withBase } from "../utils/paths";
+
+const title = "コマンドプロンプトリファレンス";
+const candidateJson = withBase("/search-candidates.json");
+
+const quickLinks = [
+  {
+    href: "/commands/",
+    title: "コマンド一覧（A-Z）",
+    description: "アルファベット順にコマンドを一覧表示します。",
+  },
+  {
+    href: "/reverse/",
+    title: "逆引き（用途）",
+    description: "タグ（用途）から command / batch / topic を探せます。",
+  },
+  {
+    href: "/batch/",
+    title: "バッチ文法",
+    description: "変数、if、for、遅延展開などの文法を確認できます。",
+  },
+  {
+    href: "/topics/",
+    title: "topics",
+    description: "文字コードなどの横断トピックをまとめています。",
+  },
+];
+---
+
+<BaseLayout title={title}>
+  <div class="homeContent">
+    <h1 class="homeTitle">Command Prompt Reference</h1>
+
+    <form id="homeSearchForm" action={withBase("/search/")} method="get" style="position: relative;">
+      <md-filled-text-field
+        id="homeSearchInput"
+        name="q"
+        type="search"
+        placeholder="例: copy / /S / 環境変数"
+      ></md-filled-text-field>
+      <div id="homeSearchSuggest" style="display:none; position:absolute; left:0; top:64px; z-index:3; width:min(680px, 92%); border:1px solid #ddd; border-radius:16px; background:#fff; box-shadow:0 10px 28px rgba(0,0,0,.12); padding:8px;"></div>
+    </form>
+
+    <section class="quickCardsSection">
+      <div class="quickCards">
+        {
+          quickLinks.map((item) => (
+            <a href={withBase(item.href)} class="quickCard">
+              <strong>{item.title}</strong>
+              <span>{item.description}</span>
+            </a>
+          ))
+        }
+      </div>
+    </section>
+  </div>
+
+  <script type="module" define:vars={{ candidateJson }}>
+    const inputEl = document.getElementById("homeSearchInput");
+    const suggestEl = document.getElementById("homeSearchSuggest");
+    const formEl = document.getElementById("homeSearchForm");
+    let candidates = [];
+    let filtered = [];
+    let activeIndex = -1;
+
+    const base = import.meta.env.BASE_URL ?? "/";
+    const withBasePath = (path) => `${base}${String(path ?? "").replace(/^\/+/, "")}`;
+
+    function scoreCandidate(candidate, query) {
+      const q = query.toLowerCase();
+      const title = candidate.title.toLowerCase();
+      const aliases = (candidate.aliases ?? []).map((a) => a.toLowerCase());
+      if (title === q) return 100;
+      if (aliases.includes(q)) return 95;
+      if (title.startsWith(q)) return 80;
+      if (aliases.some((a) => a.startsWith(q))) return 70;
+      if (title.includes(q)) return 50;
+      if (aliases.some((a) => a.includes(q))) return 40;
+      return 0;
+    }
+
+    function renderSuggestions() {
+      if (!filtered.length) {
+        suggestEl.style.display = "none";
+        suggestEl.innerHTML = "";
+        return;
+      }
+      suggestEl.style.display = "block";
+      suggestEl.innerHTML = filtered
+        .map(
+          (item, idx) => `
+            <a href="${withBasePath(item.path)}" data-idx="${idx}" style="display:block; padding:8px 10px; border-radius:10px; text-decoration:none; color:inherit; background:${idx === activeIndex ? "rgba(103,80,164,.12)" : "transparent"};">
+              <strong>${item.title}</strong>
+              <div style="font-size:12px; color:#666;">${item.summary ?? ""}</div>
+            </a>
+          `
+        )
+        .join("");
+    }
+
+    async function initSuggest() {
+      const res = await fetch(candidateJson);
+      if (!res.ok) return;
+      const json = await res.json();
+      candidates = json.candidates ?? [];
+    }
+
+    function onInput() {
+      const q = (inputEl.value ?? "").trim();
+      activeIndex = -1;
+      if (!q) {
+        filtered = [];
+        renderSuggestions();
+        return;
+      }
+      filtered = candidates
+        .map((c) => ({ c, s: scoreCandidate(c, q) }))
+        .filter((x) => x.s > 0)
+        .sort((a, b) => b.s - a.s)
+        .slice(0, 10)
+        .map((x) => x.c);
+      renderSuggestions();
+    }
+
+    inputEl?.addEventListener("input", onInput);
+    inputEl?.addEventListener("keydown", (e) => {
+      if (!filtered.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeIndex = Math.min(filtered.length - 1, activeIndex + 1);
+        renderSuggestions();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIndex = Math.max(0, activeIndex - 1);
+        renderSuggestions();
+      } else if (e.key === "Enter" && activeIndex >= 0) {
+        e.preventDefault();
+        location.href = withBasePath(filtered[activeIndex].path);
+      } else if (e.key === "Escape") {
+        filtered = [];
+        activeIndex = -1;
+        renderSuggestions();
+      }
+    });
+
+    formEl?.addEventListener("submit", () => {
+      filtered = [];
+      activeIndex = -1;
+      renderSuggestions();
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!formEl?.contains(e.target)) {
+        filtered = [];
+        activeIndex = -1;
+        renderSuggestions();
+      }
+    });
+
+    initSuggest();
+  </script>
+
+  <Fragment slot="sidebar">
+    <p>検索して Enter、または候補をクリックして移動できます。</p>
+  </Fragment>
+</BaseLayout>
+
+<style>
+  :global(main) {
+    background: #fefbff;
+  }
+
+  .homeTitle {
+    margin: 8px 0 16px;
+    text-align: center;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  .homeContent {
+    margin-top: clamp(96px, 18vh, 220px);
+    width: 100%;
+    max-width: none !important;
+  }
+
+  .quickCardsSection {
+    margin-top: 20px;
+    width: 100%;
+    max-width: none !important;
+  }
+
+  .quickCards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: none;
+  }
+
+  .quickCard {
+    text-decoration: none;
+    border-radius: 22px;
+    padding: 24px 24px;
+    background: #f8f1f6;
+    color: inherit;
+    display: grid;
+    gap: 10px;
+    min-height: 132px;
+    transition: background-color 180ms ease;
+  }
+
+  .quickCard strong {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  .quickCard span {
+    color: #4e4a52;
+    font-size: 1.05rem;
+    line-height: 1.4;
+  }
+
+  .quickCard:hover {
+    background: #d0cee8;
+  }
+
+  @media (max-width: 900px) {
+    .quickCards {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+

@@ -1,0 +1,66 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { withBase } from "../../utils/paths";
+
+function toRouteSlug(id: string): string {
+  return id.replace(/\.(md|mdx)$/i, "");
+}
+
+const title = "コマンド一覧（A-Z）";
+const commands = (await getCollection("commands")).filter((entry) => !entry.id.startsWith("_"));
+
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+const groups = letters.map((letter) => {
+  const items = commands
+    .filter((entry) => {
+      const first = entry.data.title?.trim()?.[0]?.toUpperCase() ?? "";
+      return first === letter;
+    })
+    .sort((a, b) => a.data.title.localeCompare(b.data.title, "ja"));
+
+  return { letter, items };
+});
+---
+
+<BaseLayout title={title}>
+  <h1>{title}</h1>
+  <p>コマンド名の先頭文字で探せます。</p>
+
+  <nav style="display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 18px;">
+    {
+      groups.map((group) => (
+        <a href={`#letter-${group.letter}`} style="text-decoration: none;">
+          {group.letter}
+        </a>
+      ))
+    }
+  </nav>
+
+  {
+    groups.map((group) => (
+      <section id={`letter-${group.letter}`} style="margin-bottom: 20px;">
+        <h2>{group.letter}</h2>
+        {group.items.length ? (
+          <ul>
+            {group.items.map((item) => (
+              <li>
+                <a href={withBase(`/commands/${toRouteSlug(item.id)}/`)}>{item.data.title}</a>
+                {" - "}
+                <span>{item.data.summary}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p style="color: #777;">該当なし</p>
+        )}
+      </section>
+    ))
+  }
+
+  <Fragment slot="sidebar">
+    <p>A-Z索引です。今後、タグ絞り込みも追加予定です。</p>
+  </Fragment>
+</BaseLayout>
+
