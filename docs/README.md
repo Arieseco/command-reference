@@ -5,6 +5,7 @@
 - 規約：`CODING_STANDARDS.md`
 - 要件定義：`REQUIREMENTS.md`
 - 基本設計：`BASIC_DESIGN.md`
+- サイドバー仕様：`SIDEBAR_SPEC.md`
 - デプロイ計画：`DEPLOYMENT_PLAN.md`
 - 詳細設計：`detailed-design/README.md`
 - TODO：`TODO.md`

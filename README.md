@@ -1,76 +1,31 @@
-# コマンドプロンプトリファレンス
+# Command Prompt Reference
 
-cmd.exe（コマンドプロンプト）とバッチ（`.bat`/`.cmd`）のリファレンスサイト。
+コマンドプロンプト（cmd.exe）とバッチに関するリファレンス。**Astro は廃止し、Next.js（App Router）で再構築**しています。
 
-## 前提
+## 技術スタック
 
-- **Node.js：LTS を使用**（開発/ビルドに必須）
-- パッケージマネージャ：npm（本リポジトリは npm で統一）
+- **Next.js** 16（App Router）
+- **React** 19 / **TypeScript**
+- **MUI**（`@mui/material`）+ **Emotion**（`@mui/material-nextjs` の App Router 用キャッシュ）
 
-## 開発
+## セットアップ
 
 ```bash
 npm install
 npm run dev
 ```
 
-ブラウザで `http://localhost:4321/commanddictionary` を開きます。
+- 開発: <http://localhost:3000>
+- 本番ビルド（静的書き出し）: `npm run build` → 出力は **`out/`**（GitHub Pages 用 `upload-pages-artifact` もこのパス）
+- `npm start` は Next のサーバ用。静的ホスティングでは `out/` をそのまま配信
 
-## ビルド / プレビュー
+## コンテンツ
 
-```bash
-npm run build
-npm run preview
-```
+旧 Astro の `src/content` から取り出した Markdown は **`content/`**（`commands/`, `batch/`, `topics/`）にあります。ルーティング・MDX 取り込みはこれから接続します。
 
-## ロールバック手順（revert）
+設計メモは引き続き **`docs/`** を参照してください。
 
-公開後に不具合が見つかった場合は、`main` の問題コミットを `revert` して復旧します。
+## 廃止したもの
 
-```bash
-git log --oneline
-git revert <bad_commit_hash>
-git push origin main
-```
-
-- `git revert` は「打ち消しコミット」を追加するため、履歴を壊さずに戻せます
-- push 後、GitHub Pages の自動デプロイで復旧版が公開されます
-- 複数コミットを戻す場合は、必要な順序で複数回 `git revert` します
-
-## 主要ページ
-
-- トップ: `/`
-- 検索: `/search/`
-- コマンド一覧（A-Z）: `/commands/`
-- 逆引き（用途）: `/reverse/`
-- バッチ一覧: `/batch/`
-- トピック一覧: `/topics/`
-
-## 実装メモ（URL方針）
-
-- GitHub Pages のプロジェクトサイト配信を前提に `base: "/commanddictionary"` を使用
-- 内部リンクとフォーム送信先は `withBase()` で生成
-- URLは pretty URL（末尾スラッシュ付き）で統一
-
-## ドキュメント
-
-- `docs/README.md`
-- `docs/REQUIREMENTS.md`
-- `docs/BASIC_DESIGN.md`
-- `docs/DEPLOYMENT_PLAN.md`
-- `docs/TODO.md`
-
-## 記事追加フロー（Content Collections）
-
-記事は Astro Content Collections として、次の場所に置きます。
-
-- コマンド: `src/content/commands/`
-- バッチ文法: `src/content/batch/`
-- 横断トピック: `src/content/topics/`
-
-テンプレ（複製して使う）:
-
-- `src/content/commands/_template.md`
-- `src/content/batch/_template.md`
-- `src/content/topics/_template.md`
-
+- Astro 設定・`src/pages`・`src/components`・`dist`（静的出力）など一式
+- **Tailwind CSS**（`postcss.config.mjs` 含む）

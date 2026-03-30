@@ -1,0 +1,11 @@
+/* MUI の CssBaseline がベーススタイルを担当。ここは最小限のみ。 */
+html,
+body {
+  margin: 0;
+}
+
+main article h1[id],
+main article h2[id],
+main article h3[id] {
+  scroll-margin-top: 88px;
+}

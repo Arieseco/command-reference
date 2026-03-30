@@ -106,6 +106,28 @@
 - `200` 以外のHTTPレスポンスごとの画面を作成する（対象は「発生しうるHTTPレスポンス」節に記載のもののみ）
 - 将来追加候補は `docs/ARTICLE_BACKLOG.md` と `docs/REQUIREMENTS.md` の更新時にここへ追記する
 
+## バグ: 画面遷移時の追加サイドバー引っ込みアニメ（調査・修正）
+
+ホバーで開閉するときは `scaleX` のアニメが見えるが、**別ページへ遷移するとき**に同様の「右→左へ引っ込む」見え方にならない問題。実装はあるが期待どおり動いていない可能性あり。
+
+- [x] **nav-retract-1** — 再現条件の整理（コマンド配下で別メインリンククリック時、パネル開状態/閉状態、使用ブラウザ）→ `docs/NAV_RETRACT_REPRO.md`
+- [x] **nav-retract-2** — 原因調査: `commandSubmenuNavLeaveWidth` が実際に補間されているか（DevTools → Animations）、`animationend` の有無 → 結論は `docs/NAV_RETRACT_REPRO.md`「nav-retract-2」
+- [x] **nav-retract-3** — ホバー閉じと同じ `scaleX(1)→scaleX(0)`（`commandSubmenuRetract`）に遷移専用ルートを統一 → `SidebarNav.astro` で `command-submenu-nav-leave` を `commandSubmenuRetract` に変更済み
+- [x] **nav-retract-4** — 遷移タイミング: 通常遷移は `animationend`（`commandSubmenuRetract`）のみ。保険は `SUBMENU_RETRACT_MS + 130` で `teardown` 後に `console.warn` してから遷移（`SidebarNav.astro` `setupCommandsPageNavLeave`）
+- [ ] **nav-retract-5** — 主要ブラウザで「遷移時に右→左の引っ込みが見える」目視確認（実装: `prefers-reduced-motion` 時は即遷移、二重 `requestAnimationFrame` で描画後に `command-submenu-nav-leave` 付与）
+
+関連コード: `src/components/SidebarNav.astro`（`command-submenu-nav-leave`、`setupCommandsPageNavLeave` ほか）
+
+## スタイル刷新（CSS）
+
+**背景**: 現状の CSS（コンポーネント内 `<style>`・グローバル等）は**詳細度（Specificity）の関係で効いたり効かなかったりする**箇所があり、保守と予測可能性が落ちる。手書きの詳細度競合をやめ、ユーティリティ中心に再構成する。
+
+- [ ] **style-abolish** — **現行 CSS の廃止**: 対象の洗い出し（`SidebarNav.astro`、`BaseLayout.astro`、各 `*.astro` の style ブロック等）、`!important` 依存の除去方針、段階的に未使用ルールを削る
+- [ ] **style-tailwind** — **Tailwind CSS の導入**: Astro 向け統合（例: `@astrojs/tailwind`）、`tailwind.config`（コンテンツパス・`base` 配下のパス）、既存デザイントークン（`--md-*` 等）との対応方針
+- [ ] **style-rebuild** — **CSS 再構成**: レイアウト → サイドバー → ページの順など、画面単位で Tailwind クラスへ移行し、再現確認（`docs/SIDEBAR_SPEC.md`・各 detailed-design との整合）
+
+補足: `material-web` コンポーネントとの併用・上書き方針は **style-rebuild** 段階で決める（必要なら Shadow DOM 外へのスタイル適用ルールを文書化）。
+
 ## 将来（後回し）
 
 - [ ] リンク切れチェックなどのCI
