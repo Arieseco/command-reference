@@ -118,7 +118,16 @@ const markdownComponents: Components = {
       </Box>
     );
   },
-  pre: ({ children }) => <CopyableCodeBlock code={toAnchorText(children)} />,
+  pre: ({ children }) => {
+    let language: string | undefined;
+    if (children && typeof children === "object" && "props" in children) {
+      const className = (children as { props?: { className?: string } }).props?.className;
+      if (className?.startsWith("language-")) {
+        language = className.replace("language-", "");
+      }
+    }
+    return <CopyableCodeBlock code={toAnchorText(children)} language={language} />;
+  },
 };
 
 export default async function BatchArticlePage({ params }: { params: Promise<Params> }) {

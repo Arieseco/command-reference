@@ -20,14 +20,14 @@ export default function DocAppBar({ onMenuClick }: Props) {
   const router = useRouter();
 
   const goSearch = React.useCallback(() => {
-    router.push("/search");
+    router.push("/reverse");
   }, [router]);
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        router.push("/search");
+        router.push("/reverse");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -117,7 +117,7 @@ export default function DocAppBar({ onMenuClick }: Props) {
           size="small"
           placeholder="検索…"
           onClick={goSearch}
-          inputProps={{ readOnly: true, "aria-label": "検索へ" }}
+          inputProps={{ readOnly: true, "aria-label": "逆引き検索へ" }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
